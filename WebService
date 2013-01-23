@@ -1,0 +1,89 @@
+<?php
+/**
+ * WebService Class
+ *
+ * @package  	CodeIgniter
+ * @subpackage          Libraries
+ * @category            WebService
+ * @author		bruno.figueira
+ * @link		
+ */
+class WebService{
+    
+    // declaração de atributos
+    protected $CI;
+    protected $dataAddress;
+    protected $error;
+
+    /**
+     * Constructor
+     *
+     * @access	public
+     */
+    public function __construct() {
+        $this->CI = & get_instance();
+        log_message('debug', "WebService Class Initialized");
+        
+    }
+
+    /**
+     * Metodo criado para buscar dados de endereço apartir do cep
+     *
+     * @access    public
+     * @param    string $zipecode
+     * @return    array
+     */
+    public function get_data_address_remote($zipecode) {
+        
+        $zipecode = trim(preg_replace('/[^0-9]/', '', $zipecode));
+
+        if (is_numeric($zipecode)) {
+            try {
+                $ws = new SoapClient('http://www.byjg.com.br/site/webservice.php/ws/cep?WSDL', array('encoding' => 'UTF-8'));
+
+                $response = $ws->obterLogradouroAuth($zipecode, 'usuario', '123456');
+                if(strpos($response, 'Rua') === false){
+                    $this->dataAddress = null;
+                }else{
+                   $this->dataAddress = $response;
+                }
+                 
+                //$this->dataAddress = $ws->obterLogradouroAuth($zipecode, 'igorsop', '123456');
+                //$data = explode(',', $result);
+                 
+                return $this;
+
+            } catch (SoapFault $e) {
+                $this->dataAddress = null;
+                $this->error = 'SoapClient fail. '.$e->getMessage();
+                return $this;
+            }
+        } else {
+            $this->dataAddress = null;
+            return $this;
+        }
+    }
+    /**
+     * Metodo para recuperar os dados do endereço apartir do cep
+     *
+     * @name      getAddress
+     * @access    public
+     * @return    string
+     */
+    public function getAddress() {
+        return $this->dataAddress;
+    }
+    /**
+     * Metodo para recuperar os erros ou falhas de busca de endereço
+     *
+     * @name      getErros
+     * @access    public
+     * @return    string
+     */
+    public function getError() {
+        return $this->error;
+    }
+
+}
+
+?>
