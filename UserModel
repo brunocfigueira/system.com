@@ -1,0 +1,417 @@
+<?php
+
+/**
+ * Classe Modelo User
+ *
+ * @author Bruno Cesar
+ */
+class UserModel extends CI_Model {
+
+    //nome da tabela
+    private $tablename = 'user';
+    //metadados da tabela
+    private $metaDataTable;
+    // campos da tabela
+    private $tableFields = array(
+        'tablename' => 'user',
+        'label' => array(
+            'id_user' => 'Chave tabela PK',
+            'user_name' => 'Nome',
+            'date_birth' => 'Data de nasc',
+            'phone' => 'Telefone',
+            'phone_cel' => 'Celular',
+            'email' => 'Email',
+            'flag_type_person' => 'Tipo de pessoa',
+            'cpf_cnpj' => 'CPF/CNPJ'
+        )
+    );
+    // configuraçao de validaçao
+    private $validator = array(
+        array(
+            'field' => 'id_user',
+            'label' => 'Chave tabela PK',
+            'rules' => 'required|is_numeric'
+        ),
+        array(
+            'field' => 'user_name',
+            'label' => 'Nome',
+            'rules' => 'required|max_length[100]'
+        ),
+        array(
+            'field' => 'date_birth',
+            'label' => 'Data de nascimento',
+            'rules' => 'required|valid_date|valid_age[18]'
+        ),
+        array(
+            'field' => 'phone',
+            'label' => 'Telefone',
+            'rules' => 'required|max_length[10]|numeric|min_length[10]'
+        ),
+        array(
+            'field' => 'phone_cel',
+            'label' => 'Celular',
+            'rules' => 'max_length[10]|numeric|min_length[10]'
+        ),
+        array(
+            'field' => 'email',
+            'label' => 'Email',
+            'rules' => 'required|max_length[100]|valid_email|is_unique[user.email]'
+        ),
+        array(
+            'field' => 'flag_type_person',
+            'label' => 'Tipo de pessoa',
+            'rules' => 'required|max_length[1]'
+        ),
+        array(
+            'field' => 'cpf_cnpj',
+            'label' => 'CPF/CNPJ',
+            'rules' => 'required|min_length[11]|max_length[14]|numeric|cpf_cnpj|is_unique[user.cpf_cnpj]'
+        ),
+    );
+
+    public function __construct() {
+        // Call the Model constructor
+        parent::__construct();
+
+        //carrega as valida�oes dos campos
+        $this->loadValidation();
+        //carregada os metadados da tabela
+        $this->loadMetaDataTable();
+    }
+
+    /*
+     * Metodo usado para os metadados da tabela
+     * 
+     * @name deleteRegistry
+     * return boolean
+     */
+
+    public function loadMetaDataTable() {
+        // carrega todos os campos da tabela
+        $data = $this->db->field_data($this->tablename);
+        // inicializa nome da tabela
+        $this->metaDataTable->table_name = $this->tablename;
+        // percorre todos os dados
+        foreach ($data as $key => $value) {
+            // verifica qual � a chave primaria
+            if ($value->primary_key) {
+                // inicializa a chave
+                $this->metaDataTable->primary_key[] = $value->name;
+            }
+            // inicializa os campos
+            $this->metaDataTable->fields[$value->name] = $value->name;
+        }
+        return $this->metaDataTable;
+    }
+
+    /*
+     * Metodo responsavel por inicializar as valida�oes do form
+     * 
+     * @name loadValidation
+     * @param
+     * return void
+     */
+
+    public function loadValidation() {
+        $this->form_validation->set_rules($this->validator);
+        $this->form_validation->set_error_delimiters('', '/');
+    }
+
+    /*
+     * Metodo usado para verificar se existe relacionamento entre outras tabelas 
+     * 
+     * @name checkConstraintRegistry
+     * return boolean
+     */
+
+    public function checkConstraintRegistry($data) {
+
+        // carrega o nome de todas as tabelas
+        $tables = $this->db->list_tables();
+        // percorre os registros
+        foreach ($tables as $table) {
+
+            // verifica se a tabela listada � diferente da tabela do modelo
+            if ($table != $this->tablename) {
+
+                // verifica se a chave primaria existe na tabela
+                if ($this->db->field_exists($this->metaDataTable->primary_key[0], $table)) {
+
+                    //verifica se existe registro usando o valor a chave primaria
+                    $query = $this->db->get_where($table, array($this->metaDataTable->primary_key[0] => $data[$this->metaDataTable->primary_key[0]]));
+                    // se possui registro 
+                    if (count($query->result()) > 0) {
+
+                        return false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /*
+     * Metodo responsavel por inicializar o array de validaçao
+     * 
+     * @name setArrayValidator
+     * @param
+     * return array
+     */
+
+    public function setArrayValidator(array $configArray) {
+        // reinicia o array de valida�oes
+        $this->validator = $configArray;
+        //reinicia as permissoes dos campos
+        $this->loadValidation();
+    }
+
+    /*
+     * Metodo responsavel por retornar os campos da tabela
+     * 
+     * @name getTableFields
+     * @param
+     * return array
+     */
+
+    public function getTableFields() {
+        $data = $this->getMetaDataTable();
+        $this->tableFields['field'] = $data->fields;
+        return $this->tableFields;
+    }
+
+    /*
+     * Metodo responsavel por retornar os metadata da tabela
+     * 
+     * @name getMetaDataTable
+     * @param
+     * return object
+     */
+
+    public function getMetaDataTable() {
+        return $this->metaDataTable;
+    }
+
+    /*
+     * Metodo responsavel por executar as valida�oes dos campos
+     * 
+     * @name isValid
+     * @param
+     * return boolean
+     */
+
+    public function isValid() {
+        return $this->form_validation->run();
+    }
+
+    /*
+     * Metodo recuperar todos os erros gerados
+     * 
+     * @name getErros
+     * @param
+     * return array
+     */
+
+    public function getErros() {
+
+        return validation_errors('', '', true);
+    }
+
+    /*
+     * Metodo usado para gravar registro
+     * 
+     * @name insertRegistry
+     * return boolean
+     */
+
+    public function insertRegistry($data) {
+        $this->db->insert($this->tablename, $data);
+        return $this->db->trans_status();
+    }
+
+    /*
+     * Metodo usado para atualizar registro
+     * 
+     * @name updateRegistry
+     * return boolean
+     */
+
+    public function updateRegistry($data) {
+
+        $this->db->update($this->tablename, $data, array($this->metaDataTable->primary_key[0] => $data[$this->metaDataTable->primary_key[0]]));
+        return $this->db->trans_status();
+    }
+
+    /*
+     * Metodo usado para excluir registro
+     * 
+     * @name deleteRegistry
+     * return boolean
+     */
+
+    public function deleteRegistry($data) {
+        $tables = array('accountuser', 'address', $this->tablename);
+        $this->db->delete($tables, $data);
+        return $this->db->trans_status();
+    }
+
+    /*
+     * Metodo usado para recuperar os dados gravados
+     * 
+     * @name selectRegistry
+     * return object
+     */
+
+    function countAll() {
+        return $this->db->count_all($this->tablename);
+    }
+
+    /*
+     * Metodo usado para recuperar os dados gravados
+     * 
+     * @name selectRegistry
+     * return object
+     */
+
+    function selectAll() {
+        $query = $this->db->get($this->tablename);
+        return $query->result();
+    }
+
+    /*
+     * Metodo usado para recuperar um registro especifico
+     * 
+     * @name selectOne
+     * return object
+     */
+
+    function selectOne(array $id_value) {
+
+        $query = $this->db->get_where($this->tablename, $id_value);
+        return $query->result_array();
+    }
+
+    /*
+     * Metodo usado para recuperar o valor da chave do ultimo registro inserido
+     * 
+     * @name selectMaxRecord
+     * return object
+     */
+
+    function selectMaxRecord() {
+        $this->db->select_max($this->metaDataTable->primary_key[0]);
+        $query = $this->db->get($this->tablename);
+        $data = $query->result_array();
+
+        return $data[0][$this->metaDataTable->primary_key[0]];
+    }
+
+    /*
+     * Metodo usado para os dados do formulario
+     * 
+     * @name getDataForm
+     * return boolean
+     */
+
+    public function getDataForm() {
+
+        $return = array();
+        // recupera os dados
+        $data = $this->input->post(null, true);
+
+        foreach ($this->metaDataTable->fields as $key => $value) {
+            $return[$key] = $data[$key];
+        }
+
+        return $return;
+    }
+
+    /*
+     * Metodo usado para recuperar os dados gravados apartir dos filtros de pesquisa
+     * 
+     * @name filtrateSearch
+     * return object
+     */
+
+    function filtrateSearch($dataFilter) {
+
+        // campos do select
+        $this->db->select(
+                "user.id_user, 
+                 user.user_name,
+                 concat('(',SUBSTR(user.phone,1,2),')',SUBSTR(user.phone,3,4),'-',SUBSTR(user.phone,7)) as phone,
+                 case
+                    when user.phone_cel
+                    then concat('(',SUBSTR(user.phone_cel,1,2),')',SUBSTR(user.phone_cel,3,4),'-',SUBSTR(user.phone_cel,7))
+                  else '-' end as phone_cel,
+                 email,
+                 date_format(user.date_birth,'%d/%m/%Y') as date_birth,
+                 case
+                    when  user.flag_type_person = 'F'
+                    then concat(SUBSTR(user.cpf_cnpj,1,3),'.',SUBSTR(user.cpf_cnpj,4,3),'.',SUBSTR(user.cpf_cnpj,7,3),'-',SUBSTR(user.cpf_cnpj,10))
+                  when  user.flag_type_person = 'J'
+                  then concat(SUBSTR(user.cpf_cnpj,1,2),'.',SUBSTR(user.cpf_cnpj,3,3),'.',SUBSTR(user.cpf_cnpj,6,3),'/',SUBSTR(user.cpf_cnpj,9,4),'-',SUBSTR(user.cpf_cnpj,13))end
+                  as cpf_cnpj, 
+                  case
+                    when  ac_user.status = 'A'
+                    then 'Ativo'
+                    else 'Inativo' end as status", false);
+        // tabela principal
+        $this->db->from($this->tablename);
+        $this->db->join('accountuser ac_user', "ac_user.id_user = user.id_user");
+
+        foreach ($dataFilter as $key => $value) {
+            // verfica os parametros de consulta
+            switch ($key) {
+                case 'user_name':
+                    if($value != '')
+                    // adiciona a condição like
+                    $this->db->like("user." . $key, $value, 'after');
+                    break;
+                case 'status':
+                    if($value != '')
+                    // adiciona a condição like
+                    $this->db->where("ac_user.{$key} = '{$value}'");
+                    break;
+                case 'cpf_cnpj':
+                    if($value != '')
+                    // adiciona a condição like
+                    $this->db->like("user." . $key, $value, 'after');
+                    
+                    break;
+                case 'date_birth':
+                    if($value != '')
+                    //adiciona a condição where
+                    $this->db->where("user.{$key} = '{$value}'");
+                    break;
+                case 'flag_type_person':
+                    if($value != '')
+                    //adiciona a condição where
+                    $this->db->where("user.{$key} = '{$value}'");
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        // ordenação dos dados
+        $this->db->order_by($dataFilter['sort'], $dataFilter['order']);
+        //limit inicial de registro
+        $initLimit = 0;
+        // verifica a pagina atual
+        if ($dataFilter['page'] > 1)
+        //somatorio do limit inicial da pagina
+            $initLimit += $dataFilter['rows'];
+
+        // acreceta os limits
+        $this->db->limit($dataFilter['rows'], $initLimit);
+        // recupera o objeto sql
+        $query = $this->db->get();
+        return $query->result();
+    }
+
+}
+
+?>
