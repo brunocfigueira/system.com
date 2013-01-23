@@ -1,0 +1,726 @@
+<?php
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+?>
+<script>
+    /*
+     * Funçao responsavel por alinhar os campos do formulario
+     * 
+     * @name initAlignmentFields
+     * @param 
+     * @return void
+     */
+    function initAlignmentFields_<?=$id?>(){
+        // valor da label de maior largura
+        var moreWidth = 0;
+        // percorre os campos labels
+        $('.alignment_<?=$id?>').each(function(){
+         
+            //verifica qual é maior valor da largura
+            if(moreWidth < $(this).width()){
+                moreWidth = $(this).width();
+            }
+        });
+        
+        // percorre as divs pai
+        $('.space_field').each(function(){
+            // calcula a diferenca para o alinhamento
+            var valueDiff = moreWidth - $(this).children('label').width();
+            $(this).children('span').css({'margin-left':valueDiff})
+            
+        });
+        
+        
+        
+    }
+    /*
+     * Funçao responsavel por buscar dados do endereço pelo servido webservice
+     * 
+     * @name getAddress
+     * @param 
+     * @return json
+     */
+    function getAddress() {
+        // recupera os digitos do CEP
+        var cepValue = $('#<?= $Address['field']['zip_code'] ?>_<?= $id ?>').val(); 
+        // inicializa os campos
+        $('#<?= $Address['field']['address'] ?>_<?= $id ?>').val('');
+        $('#<?= $Address['field']['district'] ?>_<?= $id ?>').val('');
+        $('#<?= $Address['field']['city'] ?>_<?= $id ?>').val('');
+        $('#<?= $Address['field']['states'] ?>_<?= $id ?>').combobox('setValue','');
+        // lança mensagem na tela
+        var msg = '<div style="padding:10px"><span class="panel-loading"><?= MSG_WAIT_VERIFY ?></span></div>';
+        $.blockUI({ message: msg});
+        // envia o cep 
+        $.post('<?= base_url() ?>UserController/getAddress',
+        {
+            cep:cepValue 
+        },
+        function(response){
+           
+            if(response.success){
+                // inicializa os campos
+                $('#<?= $Address['field']['address'] ?>_<?= $id ?>').val(response.address);
+                $('#<?= $Address['field']['district'] ?>_<?= $id ?>').val(response.district);
+                $('#<?= $Address['field']['city'] ?>_<?= $id ?>').val(response.city);
+                $('#<?= $Address['field']['states'] ?>_<?= $id ?>').combobox('setValue',response.states);
+                $('#<?= $Address['field']['number'] ?>_<?= $id ?>').focus();
+                $.unblockUI();
+                
+               
+            }else{
+                
+                $("#error_<?= $Address['field']['zip_code'] ?>_<?= $id ?>_fail").html(response.message);
+                $('#<?= $Address['field']['zip_code'] ?>_<?= $id ?>').focus(function(){
+                    $("#error_<?= $Address['field']['zip_code'] ?>_<?= $id ?>_fail").html('');
+                });
+                $.unblockUI();
+            }
+        },'json');
+    }
+        
+    /*
+     * Funçao responsavel por limpar um campo especifico
+     * 
+     * @name resetItem
+     * @param selector
+     * @return void
+     */
+    function initFields() {
+        
+        // inicializa validaçao default
+        $('#<?= $User['field']['user_name'] ?>_<?= $id ?>').validatebox({
+            required:true
+        });
+        // cria objeto data box
+       $('#<?= $User['field']['date_birth'] ?>_<?= $id ?>').datebox({
+            required:true
+            ,formatter: function(date){ 
+                var day;
+                var month;
+                
+                if(date.getDate() <= 9){
+                   day = '0'+date.getDate();
+                }else{
+                    day = date.getDate();
+                }
+                if((date.getMonth()+1) <= 9){
+                   month = '0'+(date.getMonth()+1);
+                }else{
+                    month = (date.getMonth()+1);
+                }
+                
+                return day+'/'+month+'/'+date.getFullYear();
+            } 
+            
+        });
+        
+        // inicializa a mascara do data
+        $('.combo-text.validatebox-text').mask('99/99/9999');
+        //$('.combo-value').val('<?= $date_birth ?>')
+        
+        // validacao default
+        $('#<?= $User['field']['phone'] ?>_<?= $id ?>').validatebox({
+            required:true
+        });
+        // inicializa a mascara do phone
+        $('#<?= $User['field']['phone'] ?>_<?= $id ?>').mask('(99)9999-9999');
+        
+        // inicializa a mascara do phone-cel
+        $('#<?= $User['field']['phone_cel'] ?>_<?= $id ?>').mask('(99)9999-9999');
+        
+        $('#<?= $User['field']['email'] ?>_<?= $id ?>').validatebox({  
+            required:true,
+            validType:'email'
+        }); 
+        
+        var flag_type_person = <?= ($flag_type_person == 'F')?'true':'false'?>;
+        
+        if(flag_type_person){
+            // inicializa o radio button default
+            $('#<?= $User['field']['flag_type_person'] ?>_<?= $id ?>_F').attr('checked',true);
+            $('#<?= $User['field']['cpf_cnpj'] ?>_<?= $id ?>').attr('maxlength','11');
+            // inicializa a mascara do campo cpf_cnpj
+            $('#<?= $User['field']['cpf_cnpj'] ?>_<?= $id ?>').mask('999.999.999-99');
+        }else{
+            // inicializa o radio button default
+            $('#<?= $User['field']['flag_type_person'] ?>_<?= $id ?>_J').attr('checked',true);
+            $('#<?= $User['field']['cpf_cnpj'] ?>_<?= $id ?>').attr('maxlength','14');
+            // inicializa a mascara do campo cpf_cnpj
+            $('#<?= $User['field']['cpf_cnpj'] ?>_<?= $id ?>').mask('99.999.999/9999-99');
+        }
+        // nao permite edicao nesses campos
+        $('#<?= $User['field']['flag_type_person'] ?>_<?= $id ?>_F').attr('disabled','disabled');
+        $('#<?= $User['field']['flag_type_person'] ?>_<?= $id ?>_J').attr('disabled','disabled');
+        
+        // nao permite edicao nesse campo
+        $('#<?= $User['field']['cpf_cnpj'] ?>_<?= $id ?>').attr('disabled','disabled');
+        
+        /* ************************ campos do endereço **************************** */
+        // inicializa a mascara do campo zip_code
+        $('#<?= $Address['field']['zip_code'] ?>_<?= $id ?>').validatebox({
+            required:true
+        });
+        $('#<?= $Address['field']['zip_code'] ?>_<?= $id ?>').mask('99999-999');
+        
+        // validacao do endereço
+        $('#<?= $Address['field']['address'] ?>_<?= $id ?>').validatebox({
+            required:true
+        });
+        
+        // validacao do bairro
+        $('#<?= $Address['field']['district'] ?>_<?= $id ?>').validatebox({
+            required:true
+        });
+        
+        // validacao da cidade
+        $('#<?= $Address['field']['city'] ?>_<?= $id ?>').validatebox({
+            required:true
+        });
+        
+        // validacao do numero do endereço
+        $('#<?= $Address['field']['number'] ?>_<?= $id ?>').numberbox({
+            required:true,
+            min:'1',
+            max:'10',
+            
+        });
+        
+        // carrega os dados do estado
+        $('#<?= $Address['field']['states'] ?>_<?= $id ?>').combobox({  
+          
+            url:'<?= base_url() ?>UserController/getStates',
+            required:true,
+            method:'post',
+            mode:'local',
+            valueField:'id',  
+            textField:'text'
+        }); 
+        
+        /* ******************** campos de controle de acesso ******************** */
+       
+        $('#<?= $AccountUser['field']['user_login'] ?>_<?= $id ?>').validatebox({
+            required:true
+        })
+        $('#<?= $AccountUser['field']['user_password'] ?>_<?= $id ?>').validatebox({
+            required:true
+        })
+        
+        
+        $('#<?= $AccountUser['field']['user_password']."_repeat" ?>_<?= $id ?>').validatebox({
+            required: true,
+            validType:"equalTo['<?= $AccountUser['field']['user_password'] ?>_<?= $id ?>']",
+            invalidMessage:'O valor informado deve ser igual a <?= $AccountUser['label']['user_password'] ?>.'
+        });
+        // carrega os dados do grupo de usuarios
+        $('#<?= $AccountUser['field']['id_group'] ?>_<?= $id ?>').combobox({  
+           
+            url:'<?= base_url() ?>UserController/getGroupUser',
+            required:true,
+            method:'post',
+            mode:'local',
+            valueField:'id',  
+            textField:'text'
+ 
+        }); 
+        
+        //inicializa o radio box
+        $('#<?= $AccountUser['field']['status'] ?>_<?= $id ?>_<?=$status?>').attr('checked',true);
+        
+         
+         
+    }
+    
+    /*
+     * Funçao responsavel por alterar registro
+     * 
+     * @name edit
+     * @param 
+     * @return void
+     */
+    function edit() {
+        // verifica se ja possui uma instancia da aba aberta
+        if ($('#abas').tabs('exists','<?= $titleCadastre ?>')){
+            // se ja existe apenas seleciona a mesma
+            $('#abas').tabs('close', '<?= $titleCadastre?>');
+        }
+        // verifica se ja possui uma instancia da aba aberta
+        if ($('#abas').tabs('exists','<?= $titleAlteration ?>')){
+            // se ja existe apenas seleciona a mesma
+            $('#abas').tabs('close', '<?= $titleAlteration ?>');
+        }
+        
+        // verifica se ja possui uma instancia da aba aberta
+        if ($('#abas').tabs('exists','<?= $titleSearch ?>')){
+            // se ja existe apenas seleciona a mesma
+            $('#abas').tabs('select', '<?= $titleSearch ?>');
+            
+            // se nao existe
+        } else {
+            
+            // cria a nova aba
+            $('#abas').tabs('add',{
+                title:'<?= $titleSearch ?>',
+                href:"<?= base_url() ?>UserController/searchAction",
+                closable:true,
+                extractor:function(data){
+                    return data;
+                }
+            });
+        }
+    }
+    /*
+     * Funçao responsavel por carregar a tela de cadastro
+     * 
+     * @name newCadastre
+     * @param 
+     * @return void
+     */
+    function newCadastre() {
+        
+        // verifica se ja possui uma instancia da aba aberta
+        if ($('#abas').tabs('exists','<?= $titleSearch ?>')){
+            // se ja existe apenas seleciona a mesma
+            $('#abas').tabs('close', '<?= $titleSearch ?>');
+        }
+        
+        // verifica se ja possui uma instancia da aba aberta
+        if ($('#abas').tabs('exists','<?= $titleAlteration ?>')){
+            // se ja existe apenas seleciona a mesma
+            $('#abas').tabs('close', '<?= $titleAlteration ?>');
+        }
+        
+              
+        // verifica se ja possui uma instancia da aba aberta
+        if ($('#abas').tabs('exists','<?= $titleCadastre ?>')){
+            // se ja existe fecha a mesma
+            $('#abas').tabs('select', '<?= $titleCadastre ?>');       
+        }else{
+            // cria a nova aba
+            $('#abas').tabs('add',{
+                title:'<?= $titleCadastre ?>',
+                href:'<?= base_url() ?>UserController/indexAction',
+                closable:true,
+                extractor:function(data){
+                    return data;
+                }
+            });  
+        }        
+    }
+    /*
+     * Funçao responsavel por deletar o registro da tabela
+     * 
+     * @name remove
+     * @param 
+     * @return $.messager
+     */
+    function remove() {
+        // adiciona o conteudo da mensagem
+        $('#box_dialog_<?= $id ?>').html('<div class="espace_internal text_center"><?= MSG_DIALOG_DELETE ?></div>');
+        // cria a caixa de dialogo
+        $('#box_dialog_<?= $id ?>').dialog({
+            title:"<?= $titleDelete ?>",
+            modal:true,
+            buttons:[{
+                    text:'<?= BTN_CONFIRM ?>',
+                    iconCls:'icon-ok',
+                    handler:function(){
+                        $.post("<?= base_url() ?>UserController/deleteAction",
+                        {
+                            id_user: '<?= $id_user ?>'
+                        },
+                        // callback
+                        function(response){
+                
+                            if(response.success){
+                                
+                                // fecha a aba atual de aletraçao
+                                $('#abas').tabs('close', '<?= $titleAlteration ?>');
+                                
+                                // verifica se ja possui uma instancia da aba aberta
+                                if ($('#abas').tabs('exists','<?= $titleSearch ?>')){
+                                    
+                                    // se ja existe apenas seleciona a mesma
+                                    $('#abas').tabs('select', '<?= $titleSearch ?>');
+                                    //recupera o indice e atualiza
+                                    element = $('#abas').tabs('getTab','<?= $titleSearch ?>');
+                                    element.panel('refresh');
+                                   
+                                }else{
+                                    
+                                    //cria a nova aba
+                                    $('#abas').tabs('add',{
+                                        title:'<?= $titleSearch ?>',
+                                        href:"<?= base_url() ?>UserController/searchAction",
+                                        closable:true,
+                                        extractor:function(data){
+                                            return data;
+                                        }
+                                    }); 
+                                } 
+                      
+                                // exibe mensagem na tela
+                                $.messager.alert(response.title,response.message,response.icon,function(status){});
+                            
+                            }else{
+                                // exibe mensagem na tela
+                                $.messager.alert(response.title,response.message,response.icon,function(status){});
+                            }     
+                        },'json'); 
+                        $('#box_dialog_<?= $id ?>').dialog('close');
+                    }
+                },{
+                    text:'<?= BTN_CANCEL ?>',
+                    iconCls:'icon-no',
+                    handler:function(){
+                        $('#box_dialog_<?= $id ?>').dialog('close');
+                    }
+                }]
+        });
+    }
+    /*
+     * Funçao responsavel por salvar o registro
+     * 
+     * @name save
+     * @param 
+     * @return $.messager
+     */
+    function save() {
+        
+        // adiciona o conteudo da mensagem
+        $('#box_dialog_<?= $id ?>').html('<div class="espace_internal text_center"><?= MSG_DIALOG_SAVE ?></div>');
+        
+        var status;
+        // recupera o valor do tipo de pessoa 
+        if($('#<?= $AccountUser['field']['status'] ?>_<?= $id ?>_A').is(':checked')){
+            status = $('#<?= $AccountUser['field']['status'] ?>_<?= $id ?>_A').val();
+        }else if($('#<?= $AccountUser['field']['status'] ?>_<?= $id ?>_I').is(':checked')){
+            status = $('#<?= $AccountUser['field']['status'] ?>_<?= $id ?>_I').val();
+        }
+       
+        // cria a caixa de dialogo
+        $('#box_dialog_<?= $id ?>').dialog({
+            title:"<?= $titleCadastre ?>",
+            modal:true,
+            buttons:[{
+                    text:'<?= BTN_CONFIRM ?>',
+                    iconCls:'icon-ok',
+                    handler:function(){
+                        $.post("<?= base_url() ?>UserController/editAction",
+                        {
+                            id_user: '<?=$id_user?>', 
+                            user_name: $('#<?= $User['field']['user_name'] ?>_<?= $id ?>').val(), 
+                            date_birth: $('.combo-value').val(), 
+                            phone: $('#<?= $User['field']['phone'] ?>_<?= $id ?>').val(), 
+                            phone_cel: $('#<?= $User['field']['phone_cel'] ?>_<?= $id ?>').val(), 
+                            email: $('#<?= $User['field']['email'] ?>_<?= $id ?>').val(), 
+                            flag_type_person: '<?=$flag_type_person?>', 
+                            cpf_cnpj: '<?=$cpf_cnpj?>',
+                            
+                            // dados do endereço
+                            id_address: '<?=$id_address?>',
+                            address: $('#<?= $Address['field']['address'] ?>_<?= $id ?>').val(),
+                            number: $('#<?= $Address['field']['number'] ?>_<?= $id ?>').val(),
+                            district: $('#<?= $Address['field']['district'] ?>_<?= $id ?>').val(),
+                            city: $('#<?= $Address['field']['city'] ?>_<?= $id ?>').val(),
+                            states: $('#<?= $Address['field']['states'] ?>_<?= $id ?>').combobox('getValue'),
+                            zip_code: $('#<?= $Address['field']['zip_code'] ?>_<?= $id ?>').val(),
+                            
+                            // controle de acesso
+                            id_account_user:'<?=$id_account_user?>',
+                            user_login:$('#<?= $AccountUser['field']['user_login'] ?>_<?= $id ?>').val(),
+                            user_password:$('#<?= $AccountUser['field']['user_password'] ?>_<?= $id ?>').val(),
+                            user_password_repeat:$('#<?= $AccountUser['field']['user_password']."_repeat" ?>_<?= $id ?>').val(),
+                            status: status,
+                            date:'<?=$date?>',
+                            id_group:$('#<?= $AccountUser['field']['id_group'] ?>_<?= $id ?>').combobox('getValue'),
+                        },
+                        // callback
+                        function(response){
+                
+                            if(response.success){
+                
+                                // exibe mensagem na tela
+                                $.messager.alert(response.title,response.message,response.icon,function(status){
+                                  
+                                });  
+                            }else{
+                  
+                                if(response.type == "warning"){
+                                    // exibe mensagem na tela
+                                    $.messager.alert(response.title,response.message,response.icon,function(status){});  
+                       
+                                }else if(response.type == "error"){
+                       
+                                    // seta os erros nos respectivos campos
+                                    $.each(response.data, function(key,value){
+                                        // inicializa o erro
+                                        $('#error_'+key+'_<?= $id ?>').html(value);
+                                        
+                                        if(key == 'date_birth'){
+                                            //ao focar no campo remove o erro
+                                            $('.combo-text.validatebox-text').focus(function(){
+                                                $('#error_'+key+'_<?= $id ?>').html('');
+                                            }) 
+                                        }else{
+                                            //ao focar no campo remove o erro
+                                            $('#'+key+'_<?= $id ?>').focus(function(){
+                                                $('#error_'+key+'_<?= $id ?>').html('');
+                                            }) 
+                                        }
+                                        
+                                    });
+                                }
+                   
+                            }     
+                        },'json'); 
+                        $('#box_dialog_<?= $id ?>').dialog('close');
+                    }
+                },{
+                    text:'<?= BTN_CANCEL ?>',
+                    iconCls:'icon-no',
+                    handler:function(){
+                        $('#box_dialog_<?= $id ?>').dialog('close');
+                    }
+                }]
+        });
+    }
+       
+    $(document).ready(function(){
+    
+        // acao do botao de pesquisa do cep
+        $('#btn_cep_<?= $id ?>').linkbutton({
+            plain:true
+        });
+        $('#btn_cep_<?= $id ?>').click(function(){
+            getAddress();
+        });
+        $('#<?= $Address['field']['zip_code'] ?>_<?= $id ?>').blur(function(){
+            getAddress();   
+        });
+        // acao do botao salvar
+        $('#btn_save_<?= $id ?>').linkbutton();
+        $('#btn_save_<?= $id ?>').click(function(){
+            save();
+        })
+        // acao do botao novo
+        $('#btn_new_<?= $id ?>').linkbutton();
+        $('#btn_new_<?= $id ?>').click(function(){
+            newCadastre();
+        })
+        
+        // acao do botao limpar
+        $('#btn_delete_<?= $id ?>').linkbutton();        
+        $('#btn_delete_<?= $id ?>').click(function(){
+            remove();
+        })
+        
+        
+        // acao do botao alterar
+        $('#btn_edit_<?= $id ?>').linkbutton();
+        $('#btn_edit_<?= $id ?>').click(function(){
+            edit();
+        })
+        
+        // metodo de inicialização dos campos
+        initFields();
+        // organiza a disposição dos campos na tela
+        initAlignmentFields_<?=$id?>();
+        
+    });
+   
+</script>
+<style>
+    .adjustment_fieldset{
+        padding-bottom: 33px;
+    }
+    .width_fieldset{
+        width: 525px;
+    }
+    .width_fieldset_2{
+        width: 1093px;
+    }
+</style>
+
+<div class="espace_internal">  
+    <form id="form_add_<?= $id ?>" method="post">
+        
+        <div class="side_by_syde">
+            <fieldset class="width_fieldset">
+                <legend>Dados Pessoais</legend>
+
+                <div class="space_field">
+                    <label class="alignment_<?= $id ?>"><?= $User['label']['user_name'] ?></label>
+                    <span>
+                        <input id="<?= $User['field']['user_name'] ?>_<?= $id ?>" name="<?= $User['field']['user_name'] ?>" type="text" value="<?=$user_name?>" maxlength="100" size="30" />
+                        <span id="error_<?= $User['field']['user_name'] ?>_<?= $id ?>" class="error"></span>
+                    </span>
+                    <br />
+                </div>
+                <div class="space_field">
+                    <label class="alignment_<?= $id ?>"><?= $User['label']['date_birth'] ?></label>
+                    <span >
+                        <input id="<?= $User['field']['date_birth'] ?>_<?= $id ?>" name="<?= $User['field']['date_birth'] ?>" type="text" value="<?=$date_birth?>" maxlength="10" size="" />
+                        <span id="error_<?= $User['field']['date_birth'] ?>_<?= $id ?>" class="error"></span>
+                    </span>
+                    <br />
+                </div>
+                <div class="space_field">
+                    <label class="alignment_<?= $id ?>"><?= $User['label']['phone'] ?></label>
+                    <span >
+                        <input id="<?= $User['field']['phone'] ?>_<?= $id ?>" name="<?= $User['field']['phone'] ?>" type="text" value="<?=$phone?>" maxlength="13" size="" />
+                        <span id="error_<?= $User['field']['phone'] ?>_<?= $id ?>" class="error"></span>
+                    </span>
+                    <br />
+                </div>
+                <div class="space_field">
+                    <label class="alignment_<?= $id ?>"><?= $User['label']['phone_cel'] ?></label>
+                    <span >
+                        <input id="<?= $User['field']['phone_cel'] ?>_<?= $id ?>" name="<?= $User['field']['phone_cel'] ?>" type="text" value="<?=$phone_cel?>" maxlength="13" size="" />
+                        <span id="error_<?= $User['field']['phone_cel'] ?>_<?= $id ?>" class="error"></span>
+                    </span>
+                    <br />
+                </div>
+                <div class="space_field">
+                    <label class="alignment_<?= $id ?>"><?= $User['label']['email'] ?></label>
+                    <span >
+                        <input id="<?= $User['field']['email'] ?>_<?= $id ?>" name="<?= $User['field']['email'] ?>" type="text" value="<?=$email?>" maxlength="100" size="30" />
+                        <span id="error_<?= $User['field']['email'] ?>_<?= $id ?>" class="error"></span>
+                    </span>
+                    <br />
+                </div>
+                <div class="space_field">
+                    <label class="alignment_<?= $id ?>"><?= $User['label']['flag_type_person'] ?></label>
+                    <span >
+                        <input id="<?= $User['field']['flag_type_person'] ?>_<?= $id ?>_F" name="<?= $User['field']['flag_type_person'] ?>" type="radio" value="F" maxlength="1" size="" >Física</input>
+                        <input id="<?= $User['field']['flag_type_person'] ?>_<?= $id ?>_J" name="<?= $User['field']['flag_type_person'] ?>" type="radio" value="J" maxlength="1" size="" >Jurídica</input>
+                        <span id="error_<?= $User['field']['flag_type_person'] ?>_<?= $id ?>" class="error"></span>
+                    </span>
+                    <br />
+                </div>
+                <div class="space_field">
+                    <label class="alignment_<?= $id ?>"><?= $User['label']['cpf_cnpj'] ?></label>
+                    <span >
+                        <input id="<?= $User['field']['cpf_cnpj'] ?>_<?= $id ?>" name="<?= $User['field']['cpf_cnpj'] ?>" type="text" value="<?=$cpf_cnpj?>" maxlength="11" size="" />
+                        <span id="error_<?= $User['field']['cpf_cnpj'] ?>_<?= $id ?>" class="error"></span>
+                    </span>
+                    <br />
+                </div>
+            </fieldset>
+        </div>
+       
+        <div class="side_by_syde  margin_left">
+            <fieldset class="width_fieldset adjustment_fieldset">
+                <legend>Dados de Endereço</legend>
+                <div class="space_field">
+                    <label class="alignment_<?= $id ?>"><?= $Address['label']['zip_code'] ?></label>
+                    <span >
+                        <input id="<?= $Address['field']['zip_code'] ?>_<?= $id ?>" name="<?= $Address['field']['zip_code'] ?>" type="text" value="<?=$zip_code?>" maxlength="9" size="10" />
+                        <a href="javascript:void(0)" id="btn_cep_<?= $id ?>" iconCls="icon-search" title="clique aqui para <?= BTN_SEARCH ?> endereço"></a>
+                        <span id="error_<?= $Address['field']['zip_code'] ?>_<?= $id ?>" class="error"></span>
+                        <span id="error_<?= $Address['field']['zip_code'] ?>_<?= $id ?>_fail"></span>
+                    </span>
+                    <br />
+                </div>
+                <div class="space_field">
+                    <label class="alignment_<?= $id ?>"><?= $Address['label']['address'] ?></label>
+                    <span >
+                        <input id="<?= $Address['field']['address'] ?>_<?= $id ?>" name="<?= $Address['field']['address'] ?>" type="text" value="<?=$address?>" maxlength="100" size="50" />
+                        <span id="error_<?= $Address['field']['address'] ?>_<?= $id ?>" class="error"></span>
+                    </span>
+                    <br />
+                </div>
+                <div class="space_field">
+                    <label class="alignment_<?= $id ?>"><?= $Address['label']['number'] ?></label>
+                    <span >
+                        <input id="<?= $Address['field']['number'] ?>_<?= $id ?>" name="<?= $Address['field']['number'] ?>" type="text" value="<?=$number?>" maxlength="10" size="10" />
+                        <span id="error_<?= $Address['field']['number'] ?>_<?= $id ?>" class="error"></span>
+                    </span>
+                    <br />
+                </div>
+                <div class="space_field">
+                    <label class="alignment_<?= $id ?>"><?= $Address['label']['district'] ?></label>
+                    <span >
+                        <input id="<?= $Address['field']['district'] ?>_<?= $id ?>" name="<?= $Address['field']['district'] ?>" type="text" value="<?=$district?>" maxlength="50" size="25" />
+                        <span id="error_<?= $Address['field']['district'] ?>_<?= $id ?>" class="error"></span>
+                    </span>
+                    <br />
+                </div>
+                <div class="space_field">
+                    <label class="alignment_<?= $id ?>"><?= $Address['label']['city'] ?></label>
+                    <span >
+                        <input id="<?= $Address['field']['city'] ?>_<?= $id ?>" name="<?= $Address['field']['city'] ?>" type="text" value="<?=$city?>" maxlength="50" size="25" />
+                        <span id="error_<?= $Address['field']['city'] ?>_<?= $id ?>" class="error"></span>
+                    </span>
+                    <br />
+                </div>
+                <!--                <div class="space_field adjustment_fieldset">-->
+                <div class="space_field">
+                    <label class="alignment_<?= $id ?>"><?= $Address['label']['states'] ?></label>
+                    <span >
+                        <input id="<?= $Address['field']['states'] ?>_<?= $id ?>" name="<?= $Address['field']['states'] ?>" type="text" value="<?=$states?>" maxlength="2" size="" />
+                        <span id="error_<?= $Address['field']['states'] ?>_<?= $id ?>" class="error"></span>
+                    </span>
+                    <br />
+                </div>
+            </fieldset>
+        </div>
+        <div class="clear"></div>
+        <div class="">
+            <fieldset class="width_fieldset_2">
+                <legend>Controle de Acesso</legend>
+                <div class="space_field">
+                    <label class="alignment_<?= $id ?>"><?= $AccountUser['label']['user_login'] ?></label>
+                    <span >
+                        <input id="<?= $AccountUser['field']['user_login'] ?>_<?= $id ?>" name="<?= $AccountUser['field']['user_login'] ?>" type="text" value="<?=$user_login?>" maxlength="30" size="20" />
+                        <span id="error_<?= $AccountUser['field']['user_login'] ?>_<?= $id ?>" class="error"></span>
+                    </span>
+                    <br />
+                </div>
+                <div class="space_field">
+                    <label class="alignment_<?= $id ?>"><?= $AccountUser['label']['user_password'] ?></label>
+                    <span >
+                        <input id="<?= $AccountUser['field']['user_password'] ?>_<?= $id ?>" name="<?= $AccountUser['field']['user_password'] ?>" type="password" value="<?=$user_password?>" maxlength="50" size="20" />
+                        <span id="error_<?= $AccountUser['field']['user_password'] ?>_<?= $id ?>" class="error"></span>
+                    </span>
+                    <br />
+                </div>
+                <div class="space_field">
+                    <label class="alignment_<?= $id ?>">Confirmação</label>
+                    <span >
+                        <input id="<?= $AccountUser['field']['user_password']."_repeat" ?>_<?= $id ?>" name="<?= $AccountUser['field']['user_password'] ?>_repeat" type="password" value="<?=$user_password?>" maxlength="50" size="20" />
+                        <span id="error_<?= $AccountUser['field']['user_password']."_repeat" ?>_<?= $id ?>" class="error"></span>
+                    </span>
+                    <br />
+                </div>
+                <div class="space_field">
+                    <label class="alignment_<?= $id ?>"><?= $AccountUser['label']['id_group'] ?></label>
+                    <span >
+                        <input id="<?= $AccountUser['field']['id_group'] ?>_<?= $id ?>" name="<?= $AccountUser['field']['id_group'] ?>" type="text" value="<?=$id_group?>" maxlength="" size="20" />
+                        <span id="error_<?= $AccountUser['field']['id_group'] ?>_<?= $id ?>" class="error"></span>
+                    </span>
+                    <br />
+                </div>
+                <div class="space_field">
+                    <label class="alignment_<?= $id ?>"><?= $AccountUser['label']['status'] ?></label>
+                    <span >
+                        <input id="<?= $AccountUser['field']['status'] ?>_<?= $id ?>_A" name="<?= $AccountUser['field']['status'] ?>" type="radio" value="A" maxlength="1" size="" >Ativo</input>
+                        <input id="<?= $AccountUser['field']['status'] ?>_<?= $id ?>_I" name="<?= $AccountUser['field']['status'] ?>" type="radio" value="I" maxlength="1" size="" >Inativo</input>
+                        <span id="error_<?= $AccountUser['field']['status'] ?>_<?= $id ?>" class="error"></span>
+                    </span>
+                    <br />
+                </div>
+            </fieldset>
+        </div>
+    </form>
+    <div class="clear"></div>
+    <div class="button_action">
+        <a href="javascript:void(0)" id="btn_save_<?= $id ?>" iconCls="icon-save" title="clique aqui para <?= BTN_SAVE ?>"><?= BTN_SAVE ?></a>
+        <a href="javascript:void(0)" id="btn_new_<?= $id ?>" iconCls="icon-add" title="clique aqui para <?= BTN_NEW ?>"><?= BTN_NEW ?></a>
+        <a href="javascript:void(0)" id="btn_delete_<?= $id ?>" iconCls="icon-cancel" title="clique aqui para <?= BTN_DELETE ?>"><?= BTN_DELETE ?></a>
+        <a href="javascript:void(0)" id="btn_edit_<?= $id ?>" iconCls="icon-search" title="clique aqui para <?= BTN_SEARCH ?>"><?= BTN_SEARCH ?></a>
+    </div>
+</div>
+<div id="box_dialog_<?= $id ?>" class="box_dialog"></div>
