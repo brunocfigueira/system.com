@@ -1,0 +1,296 @@
+<?php
+
+/**
+ * Description of MY_Form_validation
+ *
+ * @author Bruno Cesar
+ */
+class MY_Form_validation extends CI_Form_validation {
+
+    public function __construct() {
+        parent::__construct();
+    }
+
+    /**
+     * Retira todos os caracteres que nao forem numericos de uma string
+     *
+     * @param string $value
+     * @return string
+     */
+    public function _toNumber($value) {
+        return trim(preg_replace('/[^0-9]/', '', $value));
+    }
+
+    /**
+     * Metodo criado para validar data
+     *
+     * @access    public
+     * @param    string
+     * @return    bool
+     */
+    public function equalTo($str, $fields) {
+
+        // separa nome dos campos a serem verificados
+        $arrayFields = explode('.', $fields);
+
+        foreach ($arrayFields as $key => $value) {
+
+            if ($str !== $_POST[$value]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /*
+     * Sobrescrita do metodo is_unique
+     */
+
+    public function is_unique($str, $field) {
+
+        // separa nome da tabela e o campo de verifica��o
+        list($table, $field) = explode('.', $field);
+        // carrega todos os campos da tabela
+        $metaData = $this->CI->db->field_data($table);
+
+        // percorre todos os dados
+        foreach ($metaData as $key => $data) {
+            // verifica qual � a chave primaria
+            if ($data->primary_key) {
+                // recupera o nome
+                $primaryKey = $data->name;
+                break;
+            }
+        }
+        // inicializa a query de verifica��o
+        $this->CI->db->select($field);
+        $this->CI->db->from($table);
+        // verifica se a chave da tabela esta inicializada
+        if (isset($_POST[$primaryKey]) && is_numeric($_POST[$primaryKey]) && $GLOBALS['method']=='editAction') {
+            // where para situa��o de UPDATE
+            $where = "{$field} = '{$_POST[$field]}' AND {$primaryKey} <> $_POST[$primaryKey]";
+        } else {
+            // where para situa��o de INSERT
+            $where = "{$field} = '{$_POST[$field]}'";
+        }
+        $this->CI->db->limit(1)->where($where);
+        $query = $this->CI->db->get();
+        return $query->num_rows() === 0;
+    }
+
+    /**
+     * Metodo criado para validar data
+     *
+     * @access    public
+     * @param    string
+     * @return    bool
+     */
+    public function valid_date($str) {
+
+        $ddmmyyy = '(0[1-9]|[12][0-9]|3[01])[- \/.](0[1-9]|1[012])[- \/.](19|20)[0-9]{2}';
+        if (preg_match("/$ddmmyyy$/", $str)) {
+            $arr = explode("/", $str);
+            $dd = $arr[0];
+            $mm = $arr[1];
+            $yyyy = $arr[2];
+            return ( checkdate($mm, $dd, $yyyy) );
+        } else {
+            return FALSE;
+        }
+    }
+
+    /**
+     * Metodo criado para validar idade
+     *
+     * @access    public
+     * @param    string
+     * @return    bool
+     */
+    public function valid_age($str, $age = 18) {
+
+        // verifica se a string é data valida
+        if ($this->valid_date($str)) {
+            // extrai a data de nascimento
+            $date_birth = explode("/", $str);
+            // recupera a data atual
+            $date = date("d/m/Y");
+            // extrai a data atual
+            $date = explode("/", $date);
+
+            // calcula o a idade
+            $years = $date[2] - $date_birth[2];
+
+            if ($date_birth[1] >= $date[1]) {
+
+                if ($date_birth[0] <= $date[0]) {
+                    // calcula o a idade
+                    $years = $years;
+                } else {
+                    // calcula o a idade
+                    $years = $years - 1;
+                }
+            }
+
+            // verifica se é maior de se maior de 18 anos
+            if ($years > $age) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Valida um cpf ou cnpj, dependendo da quantidade de caracteres numericos que a string contiver
+     * O cpf ou cnpj podem ser passados com os pontos separadores ou barras
+     *
+     * @param string $value
+     * @return array
+     */
+    public function cpf_cnpj($value) {
+
+        if (in_array(strlen($value), array(11)))
+            return self::cpf($value, false);
+        if (in_array(strlen($value), array(14)))
+            return self::cnpj($value, false);
+        return false;
+    }
+
+    /**
+     * CPF, pode ser passado com separadores e mascaras
+     *
+     * @param string $cpf
+     * @return bool
+     */
+    public function cpf($cpf) {
+        $cpf = self::_toNumber($cpf);
+
+        if (!is_numeric($cpf) || empty($cpf) || strlen($cpf) != 11) {
+            return FALSE;
+        } else {
+            if ($this->check_fake($cpf, 11)) {
+                return FALSE;
+            } else {
+                //PEGA O DIGITO VERIFIACADOR
+                $dv_checker = substr($cpf, 9, 2);
+                for ($i = 0; $i <= 8; $i++) {
+                    $digit[$i] = substr($cpf, $i, 1);
+                }
+
+                //CALCULA O VALOR DO 10º DIGITO DE VERIFICAÇÂO
+                $position = 10;
+                $sum = 0;
+                for ($i = 0; $i <= 8; $i++) {
+                    $sum = $sum + $digit[$i] * $position;
+                    $position = $position - 1;
+                }
+
+                $digit[9] = $sum % 11;
+
+                if ($digit[9] < 2) {
+                    $digit[9] = 0;
+                } else {
+                    $digit[9] = 11 - $digit[9];
+                }
+
+                //CALCULA O VALOR DO 11º DIGITO DE VERIFICAÇÃO
+                $position = 11;
+                $sum = 0;
+                for ($i = 0; $i <= 9; $i++) {
+                    $sum = $sum + $digit[$i] * $position;
+                    $position = $position - 1;
+                }
+
+                $digit[10] = $sum % 11;
+                if ($digit[10] < 2) {
+                    $digit[10] = 0;
+                } else {
+                    $digit[10] = 11 - $digit[10];
+                }
+
+                //VERIFICA SE O DV CALCULADO É IGUAL AO INFORMADO
+                $dv = $digit[9] * 10 + $digit[10];
+                if ($dv != $dv_checker) {
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+        }
+    }
+
+    /**
+     * CNPJ, pode ser passado com separadores
+     *
+     * @param string $cnpj
+     * @return bool
+     */
+    public function cnpj($cnpj) {
+        $cnpj = self::_toNumber($cnpj);
+
+        if (!is_numeric($cnpj) || empty($cnpj) || strlen($cnpj) != 14) {
+            return FALSE;
+        } else {
+            if ($this->check_fake($cnpj, 14)) {
+                return FALSE;
+            } else {
+                $sum = 0;
+                $rev_cnpj = strrev(substr($cnpj, 0, 12));
+                for ($i = 0; $i <= 11; $i++) {
+                    $i == 0 ? $multiplier = 2 : $multiplier;
+                    $i == 8 ? $multiplier = 2 : $multiplier;
+                    $multiply = ($rev_cnpj[$i] * $multiplier);
+                    $sum = $sum + $multiply;
+                    $multiplier++;
+                }
+                $rest = $sum % 11;
+                if ($rest == 0 || $rest == 1)
+                    $dv1 = 0;
+                else
+                    $dv1 = 11 - $rest;
+
+                $sub_cnpj = substr($cnpj, 0, 12);
+                $rev_cnpj = strrev($sub_cnpj . $dv1);
+                $sum = 0;
+                for ($i = 0; $i <= 12; $i++) {
+                    $i == 0 ? $multiplier = 2 : $multiplier;
+                    $i == 8 ? $multiplier = 2 : $multiplier;
+                    $multiply = ($rev_cnpj[$i] * $multiplier);
+                    $sum = $sum + $multiply;
+                    $multiplier++;
+                }
+                $rest = $sum % 11;
+                if ($rest == 0 || $rest == 1)
+                    $dv2 = 0;
+                else
+                    $dv2 = 11 - $rest;
+
+                if ($dv1 == $cnpj[12] && $dv2 == $cnpj[13])
+                    return TRUE;
+                else
+                    return FALSE;
+            }
+        }
+    }
+
+    /**
+     * Verifica se o valor nao é falso
+     *
+     * @param string $string
+     * @param integer $length
+     * @return integer
+     */
+    public function check_fake($string, $length) {
+        for ($i = 0; $i <= 9; $i++) {
+            $fake = str_pad("", $length, $i);
+            if ($string === $fake)
+                return(1);
+        }
+    }
+
+}
+
+?>
