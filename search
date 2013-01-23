@@ -1,0 +1,316 @@
+<?php
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+?>
+<script>
+    
+    /*
+     * Funcao responsavel por criar o grid dos registros da tabela
+     * 
+     * @name createDataGrid
+     * @param valueField 
+     * @param nameField 
+     * 
+     * return object datagrid
+     */
+    function createDataGrid_<?= $id ?>(){
+        var type = '';
+        // recupera o valor do tipo de pessoa 
+        if($('#<?= $User['field']['flag_type_person'] ?>_<?= $id ?>_F').is(':checked')){
+            type = $('#<?= $User['field']['flag_type_person'] ?>_<?= $id ?>_F').val();
+        }else if($('#<?= $User['field']['flag_type_person'] ?>_<?= $id ?>_J').is(':checked')){
+            type = $('#<?= $User['field']['flag_type_person'] ?>_<?= $id ?>_J').val();
+        }
+        
+        var status = '';
+        // recupera o valor do tipo de pessoa 
+        if($('#<?= $AccountUser['field']['status'] ?>_<?= $id ?>_A').is(':checked')){
+            status = $('#<?= $AccountUser['field']['status'] ?>_<?= $id ?>_A').val();
+        }else if($('#<?= $AccountUser['field']['status'] ?>_<?= $id ?>_I').is(':checked')){
+            status = $('#<?= $AccountUser['field']['status'] ?>_<?= $id ?>_I').val();
+        }
+        
+        $('#grid_<?= $id ?>').datagrid({
+            
+            //title:'<? //= $titleSearch               ?>',
+            loadMsg:'<?= MSG_WAIT ?>',
+            method: 'post',
+            url:"<?= base_url() ?>UserController/loadDataSearchAction",
+            queryParams:{
+                user_name:$('#<?= $User['field']['user_name'] ?>_<?= $id ?>').val(),
+                cpf_cnpj:$('#<?= $User['field']['cpf_cnpj'] ?>_<?= $id ?>').val(),
+                date_birth:$('#<?= $User['field']['date_birth'] ?>_<?= $id ?>').combobox('getValue'),
+                status:status,
+                flag_type_person:type
+            },
+            idField:'<?= $User['field']['id_user'] ?>',
+            columns:[
+                [  
+                    {field:'<?= $User['field']['id_user'] ?>',hidden:true},  
+                    {field:'<?= $User['field']['user_name'] ?>',title:'<?= $User['label']['user_name'] ?>',width:265,sortable:true},  
+                    {field:'<?= $User['field']['phone'] ?>',title:'<?= $User['label']['phone'] ?>',width:110,sortable:true},  
+                    {field:'<?= $User['field']['phone_cel'] ?>',title:'<?= $User['label']['phone_cel'] ?>',width:110,sortable:true},  
+                    {field:'<?= $User['field']['email'] ?>',title:'<?= $User['label']['email'] ?>',width:200,sortable:true},  
+                    {field:'<?= $User['field']['date_birth'] ?>',title:'<?= $User['label']['date_birth'] ?>',width:122,sortable:true},  
+                    {field:'<?= $User['field']['cpf_cnpj'] ?>',title:'<?= $User['label']['cpf_cnpj'] ?>',width:138,sortable:true},  
+                    {field:'<?= $AccountUser['field']['status'] ?>',title:'<?= $AccountUser['label']['status'] ?>',width:100,sortable:true},  
+                    
+                ]],
+            fitColumns:true,
+            sortName:'<?= $User['field']['user_name'] ?>',
+            sortOrder:'asc',
+            pagination:true,
+            rownumbers:true,
+            showFooter:false,
+            onDblClickRow:function(rowIndex,rowData){
+                
+                // verifica se ja possui uma instancia da aba aberta
+                if ($('#abas').tabs('exists','<?= $titleAlteration ?>')){
+                    // se ja existe fecha a mesma
+                    $('#abas').tabs('close', '<?= $titleAlteration ?>');       
+                }
+                // verifica se ja possui uma instancia da aba aberta
+                if ($('#abas').tabs('exists','<?= $titleCadastre ?>')){
+                    // se ja existe fecha a mesma
+                    $('#abas').tabs('close', '<?= $titleCadastre ?>');       
+                }
+                // verifica se ja possui uma instancia da aba aberta
+                if ($('#abas').tabs('exists','<?= $titleSearch ?>')){
+                    // se ja existe fecha a mesma
+                    $('#abas').tabs('close', '<?= $titleSearch ?>');       
+                }
+
+                // cria a nova aba
+                $('#abas').tabs('add',{
+                    title:'<?= $titleAlteration ?>',
+                    href:'<?= base_url() ?>UserController/loadEditAction?<?= $User['field']['id_user'] ?>='+rowData.id_user,
+                    closable:true,
+                    extractor:function(data){
+                        return data;
+                    }
+                });
+            }
+        })     
+    }  
+    /*
+     * Funçao responsavel por alinhar os campos do formulario
+     * 
+     * @name initAlignmentFields_<?= $id ?>
+     * @param 
+     * @return void
+     */
+    function initAlignmentFields_<?= $id ?>(){
+        // valor da label de maior largura
+        var moreWidth = 0;
+        // percorre os campos labels
+        $('.alignment_<?= $id ?>').each(function(){
+         
+            //verifica qual é maior valor da largura
+            if(moreWidth < $(this).width()){
+                moreWidth = $(this).width();
+            }
+        });
+        
+        // percorre as divs pai
+        $('.space_field').each(function(){
+            // calcula a diferenca para o alinhamento
+            var valueDiff = moreWidth - $(this).children('label').width();
+            $(this).children('span').css({'margin-left':valueDiff})
+            
+        });
+    }
+    
+    /*
+     * Funçao responsavel por limpar um campo especifico
+     * 
+     * @name resetItem
+     * @param selector
+     * @return void
+     */
+    function initFields() {
+
+        // cria objeto data box
+        $('#<?= $User['field']['date_birth'] ?>_<?= $id ?>').datebox({
+            
+            formatter: function(date){ 
+                var day;
+                var month;
+                
+                if(date.getDate() <= 9){
+                    day = '0'+date.getDate();
+                }else{
+                    day = date.getDate();
+                }
+                if((date.getMonth()+1) <= 9){
+                    month = '0'+(date.getMonth()+1);
+                }else{
+                    month = (date.getMonth()+1);
+                }
+                
+                return day+'/'+month+'/'+date.getFullYear();
+            } 
+            
+        });
+        // inicializa a mascara do data
+        $('.combo-text.validatebox-text').mask('99/99/9999');
+        // inicializa a mascara do campo cpf_cnpj
+        $('#<?= $User['field']['cpf_cnpj'] ?>_<?= $id ?>').mask('999.999.999-99');
+    }
+    /*
+     * Funçao responsavel por carregar a tela de cadastro
+     * 
+     * @name newCadastre
+     * @param 
+     * @return void
+     */
+    function newCadastre() {
+        
+        // verifica se ja possui uma instancia da aba aberta
+        if ($('#abas').tabs('exists','<?= $titleSearch ?>')){
+            // se ja existe apenas seleciona a mesma
+            $('#abas').tabs('close', '<?= $titleSearch ?>');
+        }
+        
+        // verifica se ja possui uma instancia da aba aberta
+        if ($('#abas').tabs('exists','<?= $titleAlteration ?>')){
+            // se ja existe apenas seleciona a mesma
+            $('#abas').tabs('close', '<?= $titleAlteration ?>');
+        }
+        
+              
+        // verifica se ja possui uma instancia da aba aberta
+        if ($('#abas').tabs('exists','<?= $titleCadastre ?>')){
+            // se ja existe fecha a mesma
+            $('#abas').tabs('select', '<?= $titleCadastre ?>');       
+        }else{
+            // cria a nova aba
+            $('#abas').tabs('add',{
+                title:'<?= $titleCadastre ?>',
+                href:'<?= base_url() ?>UserController/indexAction',
+                closable:true,
+                extractor:function(data){
+                    return data;
+                }
+            });  
+        }        
+    }
+    
+    $(document).ready(function(){
+        
+        $('#<?= $User['field']['flag_type_person'] ?>_<?= $id ?>_F').live('click',function(){
+            // verifica se o campo esta check     
+            
+            if($(this).is(':checked')){
+                $('#<?= $User['field']['cpf_cnpj'] ?>_<?= $id ?>').attr('maxlength','11');
+                $('#<?= $User['field']['cpf_cnpj'] ?>_<?= $id ?>').mask('999.999.999-99');
+                $(this).val('F');
+            }
+            
+        }) 
+        
+        $('#<?= $User['field']['flag_type_person'] ?>_<?= $id ?>_J').live('click',function(){
+            // verifica se o campo esta check 
+            
+            if($(this).is(':checked')){
+                $('#<?= $User['field']['cpf_cnpj'] ?>_<?= $id ?>').attr('maxlength','14');
+                $('#<?= $User['field']['cpf_cnpj'] ?>_<?= $id ?>').mask('99.999.999/9999-99');
+                $(this).val('J');
+            }
+        })
+        // acao do botao salvar
+        $('#btn_filter_<?= $id ?>').linkbutton();
+        $('#btn_filter_<?= $id ?>').click(function(){
+            
+            createDataGrid_<?= $id ?>();
+        })
+        
+        // acao do botao limpar
+        $('#btn_clear_<?= $id ?>').linkbutton();        
+        $('#btn_clear_<?= $id ?>').click(function(){
+            
+            $('#form_filters_<?= $id ?>').form('clear');
+            createDataGrid_<?= $id ?>();
+        })
+        
+        // acao do botao novo
+        $('#btn_new_<?= $id ?>').linkbutton();
+        $('#btn_new_<?= $id ?>').click(function(){
+            newCadastre();
+        })
+        
+        // inicializa os campos de filtros
+        initFields();
+        // organiza a disposição dos campos na tela
+        initAlignmentFields_<?= $id ?>();
+        // inicializa o grid com todos os regsitros existentes
+        createDataGrid_<?= $id ?>();
+        
+    });
+</script>
+
+<div class="fieldset">
+    <div id="content_table_<?= $id ?>">
+        <form id="form_filters_<?= $id ?>" method="post">
+            <div id="filters_grid_<?= $id ?>">
+                <fieldset class="backgroung_filter_search">
+                    <legend>Filtros de Pesquisa</legend>
+                    <div class="side_by_syde">
+                        <div class="space_field">
+                            <label class="alignment_<?= $id ?>"><?= $User['label']['flag_type_person'] ?></label>
+                            <span >
+                                <input id="<?= $User['field']['flag_type_person'] ?>_<?= $id ?>_F" name="<?= $User['field']['flag_type_person'] ?>" type="radio" value="F" maxlength="1" size="" >Física</input>
+                                <input id="<?= $User['field']['flag_type_person'] ?>_<?= $id ?>_J" name="<?= $User['field']['flag_type_person'] ?>" type="radio" value="J" maxlength="1" size="" >Jurídica</input>
+
+                            </span>
+                            <br />
+                        </div>
+                        <div class="space_field">
+                            <label class="alignment_<?= $id ?>"><?= $User['label']['cpf_cnpj'] ?></label>
+                            <span >
+                                <input id="<?= $User['field']['cpf_cnpj'] ?>_<?= $id ?>" name="<?= $User['field']['cpf_cnpj'] ?>" type="text" value="" maxlength="11" size="16" />
+
+                            </span>
+                            <br />
+                        </div>
+                        <div class="space_field">
+                            <label class="alignment_<?= $id ?>"><?= $User['label']['user_name'] ?></label>
+                            <span >
+                                <input id="<?= $User['field']['user_name'] ?>_<?= $id ?>" name="<?= $User['field']['user_name'] ?>" type="text" value="" maxlength="100" size="30" />
+
+                            </span>
+                            <br />
+                        </div>
+                    </div>
+                    <div class="side_by_syde margin_left">
+
+                        <div class="space_field">
+                            <label class="alignment_<?= $id ?>"><?= $AccountUser['label']['status'] ?></label>
+                            <span >
+                                <input id="<?= $AccountUser['field']['status'] ?>_<?= $id ?>_A" name="<?= $AccountUser['field']['status'] ?>" type="radio" value="A" maxlength="1" size="" >Ativo</input>
+                                <input id="<?= $AccountUser['field']['status'] ?>_<?= $id ?>_I" name="<?= $AccountUser['field']['status'] ?>" type="radio" value="I" maxlength="1" size="" >Inativo</input>
+                            </span>
+                            <br />
+                        </div>
+                        <div class="space_field">
+                            <label class="alignment_<?= $id ?>"><?= $User['label']['date_birth'] ?></label>
+                            <span >
+                                <input id="<?= $User['field']['date_birth'] ?>_<?= $id ?>" name="<?= $User['field']['date_birth'] ?>" type="text" value="" maxlength="10" size="" />
+
+                            </span>
+                            <br />
+                        </div>
+                    </div>
+                    <div class="clear"></div>
+
+                    <a href="javascript:void(0)" id="btn_filter_<?= $id ?>" iconCls="icon-search" title="clique aqui para <?= BTN_FILTER ?>"><?= BTN_FILTER ?></a>
+                    <a href="javascript:void(0)" id="btn_clear_<?= $id ?>" iconCls="icon-undo" title="clique aqui para <?= BTN_CLEAR ?> os filtros"><?= BTN_CLEAR ?></a>
+                    <a href="javascript:void(0)" id="btn_new_<?= $id ?>" iconCls="icon-add" title="clique aqui para <?= BTN_NEW ?> registro"><?= BTN_NEW ?></a>
+                </fieldset>
+
+            </div>
+        </form>
+        <table id="grid_<?= $id ?>"></table>
+    </div> 
+</div>
