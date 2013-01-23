@@ -1,0 +1,495 @@
+<?php
+
+/**
+ * Description of UserController
+ *
+ * @author bruno.figueira
+ */
+class UserController extends CI_Controller {
+    /*
+     * Metodo usado para inicializar os titulos das paginas
+     * 
+     * @name getDataUtil
+     * @param 
+     * return arry
+     */
+
+    public function getDataUtil() {
+        //titulos das janelas
+        $data['titleCadastre'] = 'Cadastro de Usuário';
+        $data['titleAlteration'] = 'Alteração de Usuário';
+        $data['titleSearch'] = 'Pesquisa de Usuário';
+        $data['titleDelete'] = 'Exclusão de Usuário';
+        $data['id'] = md5(rand(1, 999));
+
+        return $data;
+    }
+
+    /*
+     * Metodo usado para carregar dados para combobox dos estados
+     * 
+     * @name getStates
+     * @param 
+     * return json
+     */
+
+    public function getStates() {
+        $sigla = isset($_GET['sigla']) ? $_GET['sigla'] : '';
+        echo get_states_array_json($sigla);
+    }
+
+    /*
+     * Metodo usado para carregar dados para combobox do grupo de usuarios
+     * 
+     * @name getGroupUser
+     * @param 
+     * return json
+     */
+
+    public function getGroupUser() {
+        $this->load->model('GroupUserModel');
+        echo $this->GroupUserModel->getDataCombobox('id_group', 'group_name');
+    }
+
+    /*
+     * Metodo usado para carregar dados para combobox dos estados
+     * 
+     * @name getStates
+     * @param 
+     * return json
+     */
+
+    public function getAddress() {
+
+        // recupera o cep informado
+        $data = $this->input->post(null, true);
+        // carrega a biblioteca
+        $this->load->library('webservice');
+        // busca os dados do endereço
+        $webservice = $this->webservice->get_data_address_remote($data['cep']);
+        $data = $webservice->getAddress();
+
+        if (!is_null($data)) {
+
+            // separa os dados
+            $dataInArray = explode(',', $data);
+            // inicializa os campos
+            $address = isset($dataInArray[0]) ? trim($dataInArray[0]) : '';
+            $district = isset($dataInArray[1]) ? trim($dataInArray[1]) : '';
+            $city = isset($dataInArray[2]) ? trim($dataInArray[2]) : '';
+            $states = isset($dataInArray[3]) ? trim($dataInArray[3]) : '';
+
+            $response = json_encode(
+                    array(
+                        'success' => true,
+                        'address' => $address,
+                        'district' => $district,
+                        'city' => $city,
+                        'states' => strtoupper($states),
+                    )
+            );
+
+            echo $response;
+        } else {
+            $error = $webservice->getError();
+            $response = json_encode(
+                    array(
+                        'success' => false,
+                        'message' => 'CEP informado não encontrado.',
+                        'error' => $error
+                    )
+            );
+            echo $response;
+        }
+    }
+
+    /*
+     * Metodo para remover as mascaras dos campos do formulario
+     * 
+     * @name removeMaskFields
+     * @param 
+     * return void
+     */
+
+    function removeMaskFields() {
+        // recupera os dados
+        $data = $this->input->post(null, true);
+        isset($_POST['phone'])?  $_POST['phone'] = trim(preg_replace('/[^0-9]/', '', $data['phone'])):false;
+        isset($_POST['phone_cel'])? $_POST['phone_cel'] = trim(preg_replace('/[^0-9]/', '', $data['phone_cel'])):false;
+        isset($_POST['cpf_cnpj']) ? $_POST['cpf_cnpj'] = trim(preg_replace('/[^0-9]/', '', $data['cpf_cnpj'])):false;
+        isset($_POST['zip_code']) ? $_POST['zip_code'] = trim(preg_replace('/[^0-9]/', '', $data['zip_code'])):false;
+    }
+
+    /*
+     * Metodo para inicializar as chaves das tabelas
+     * 
+     * @name initFieldsRequired
+     * @param 
+     * return void
+     */
+
+    function initFieldsRequired() {
+        // inicializa as chaves das tabelas antes de passar nas validações
+        $_POST['id_user'] = (int) 1;
+        $_POST['id_address'] = (int) 1;
+        $_POST['id_account_user'] = (int) 1;
+        $_POST['date'] = date('d/m/Y');
+    }
+
+    /*
+     * Metodo inicial
+     * 
+     * @name indexAction
+     * @param 
+     * return void
+     */
+
+    function indexAction() {
+        $dataView = $this->getDataUtil();
+        $this->load->model('UserModel');
+        $this->load->model('AddressModel');
+        $this->load->model('AccountUserModel');
+        $field1 = $this->UserModel->getTableFields();
+        $field2 = $this->AddressModel->getTableFields();
+        $field3 = $this->AccountUserModel->getTableFields();
+        $fields['User'] = $field1;
+        $fields['Address'] = $field2;
+        $fields['AccountUser'] = $field3;
+
+        $this->load->view('user/add', $dataView + $fields);
+    }
+
+    /*
+     * Metodo para cadastrar usuarios
+     * 
+     * @name addAction
+     * @param 
+     * return json
+     */
+
+    function addAction() {
+
+        //titulo da pagina
+        $dataView = $this->getDataUtil();
+        
+        // remove mascara do campo telefone
+        $this->removeMaskFields();
+        $this->initFieldsRequired();
+        
+        //carrega o modelo da tabela
+        $this->load->model('UserModel');
+        $this->load->model('AddressModel');
+        $this->load->model('AccountUserModel');
+        // verifica se os dados do post estao validos
+        if ($this->UserModel->isValid()) {
+
+            // recupera os dados
+            $dataUser = $this->UserModel->getDataForm();
+            unset($dataUser['id_user']);
+            $dataUser['date_birth'] = formatterDateSql($dataUser['date_birth']);
+            
+            // abre uma transação com o DB
+            $this->db->trans_begin();
+            // insere o regtro
+            $status = $this->UserModel->insertRegistry($dataUser);
+
+            if ($status) {
+                
+                $dataAddress = $this->AddressModel->getDataForm();
+                unset($dataAddress['id_address']);
+                $dataAddress['id_user'] = $this->UserModel->selectMaxRecord();
+                // insere o regtro
+                $status = $this->AddressModel->insertRegistry($dataAddress);
+
+                if ($status) {
+                    $dataAccountUser = $this->AccountUserModel->getDataForm();
+                    unset($dataAccountUser['id_account_user']);
+                    $dataAccountUser['date'] = formatterDateSql($dataAccountUser['date']);
+                    $dataAccountUser['id_user'] = $this->UserModel->selectMaxRecord();
+                    // insere o regtro
+                    $status = $this->AccountUserModel->insertRegistry($dataAccountUser);
+                }
+            }
+
+            // verifica o status 
+            if ($status) {
+
+                // confirma as modificaçoes no banco
+                $this->db->trans_commit();
+                // configura o json de resposta
+                $response = json_encode(
+                        array(
+                            'success' => true,
+                            'title' => ($dataView['titleCadastre']),
+                            'message' => MSG_SAVE_SUCESS,
+                            'icon' => 'info'
+                        )
+                );
+                echo $response;
+            } else {
+                // desfaz as modificaçoes do banco
+                $this->db->trans_rollback();
+                // configura o json de resposta
+                $response = json_encode(
+                        array(
+                            'success' => false,
+                            'type' => 'warning',
+                            'title' => ($dataView['titleCadastre']),
+                            'message' => MSG_WARNNING_SAVE,
+                            'icon' => 'warning'
+                        )
+                );
+                echo $response;
+            }
+        } else {
+
+            //recupera os erros gerados
+            $data = $this->UserModel->getErros();
+
+            // configura o json de resposta
+            $response = json_encode(
+                    array(
+                        'success' => false,
+                        'type' => 'error',
+                        'data' => $data
+                    )
+            );
+            echo $response;
+        }
+    }
+
+    /*
+     * Metodo para alterar usuarios
+     * 
+     * @name editAction
+     * @param 
+     * return json
+     */
+
+    function editAction() {
+
+        //titulo da pagina
+        $dataView = $this->getDataUtil();
+        // remove mascara do campo telefone
+        $this->removeMaskFields();
+        
+       //carrega o modelo da tabela
+        $this->load->model('UserModel');
+        $this->load->model('AddressModel');
+        $this->load->model('AccountUserModel');
+        
+        // verifica se os dados do post estao validos
+        if ($this->UserModel->isValid()) {
+
+            // recupera os dados
+            $dataUser = $this->UserModel->getDataForm();
+            $dataUser['date_birth'] = formatterDateSql($dataUser['date_birth']);
+            
+            // abre uma transação com o DB
+            $this->db->trans_begin();
+            // insere o regtro
+            $status = $this->UserModel->updateRegistry($dataUser);
+
+            if ($status) {
+                
+                $dataAddress = $this->AddressModel->getDataForm();
+                // insere o regtro
+                $status = $this->AddressModel->updateRegistry($dataAddress);
+
+                if ($status) {
+                    
+                    $dataAccountUser = $this->AccountUserModel->getDataForm();
+                    $dataAccountUser['date'] = formatterDateSql($dataAccountUser['date']);
+                    
+                    // insere o regtro
+                    $status = $this->AccountUserModel->updateRegistry($dataAccountUser);
+                }
+            }
+            // verifica o status 
+            if ($status) {
+                // confirma as modificaçoes no banco
+                $this->db->trans_commit();
+                // configura o json de resposta
+                $response = json_encode(
+                        array(
+                            'success' => true,
+                            'title' => ($dataView['titleAlteration']),
+                            'message' => MSG_SAVE_SUCESS,
+                            'icon' => 'info'
+                        )
+                );
+                echo $response;
+            } else {
+                // desfaz as modificaçoes do banco
+                $this->db->trans_rollback();
+                // configura o json de resposta
+                $response = json_encode(
+                        array(
+                            'success' => false,
+                            'type' => 'warning',
+                            'title' => ($dataView['titleAlteration']),
+                            'message' => MSG_WARNNING_SAVE,
+                            'icon' => 'warning'
+                        )
+                );
+                echo $response;
+            }
+        } else {
+
+            //recupera os erros gerados
+            $data = $this->UserModel->getErros();
+
+            // configura o json de resposta
+            $response = json_encode(
+                    array(
+                        'success' => false,
+                        'type' => 'error',
+                        'data' => $data
+                    )
+            );
+            echo $response;
+        }
+    }
+
+    /*
+     * Metodo para carregar o registro selecionado na pesquisa
+     * 
+     * @name loadEditAction
+     * @param 
+     * return void
+     */
+
+    function loadEditAction() {
+        //titulo da pagina
+        $dataView = $this->getDataUtil();
+        
+        $this->load->model('UserModel');
+        $this->load->model('AddressModel');
+        $this->load->model('AccountUserModel');
+        $field1 = $this->UserModel->getTableFields();
+        $field2 = $this->AddressModel->getTableFields();
+        $field3 = $this->AccountUserModel->getTableFields();
+        $fields['User'] = $field1;
+        $fields['Address'] = $field2;
+        $fields['AccountUser'] = $field3;
+        // recupera a chave da tabela
+        $dataGet['id_user'] = $_GET['id_user'];
+        $dataUser = $this->UserModel->selectOne($dataGet);
+        $dataUser[0]['date_birth'] = unformatterDateSql($dataUser[0]['date_birth']);
+        $dataAddress = $this->AddressModel->selectOne($dataGet);
+        $dataAccountUser = $this->AccountUserModel->selectOne($dataGet);
+        $dataAccountUser[0]['date'] = unformatterDateSql($dataAccountUser[0]['date']);
+        
+        $data = $dataUser[0]+$dataAddress[0]+$dataAccountUser[0];
+        
+        $this->load->view('user/edit', $dataView + $fields + $data);
+    }
+
+    /*
+     * Metodo responsavel por apagar registro da tabela
+     * 
+     * @name deleteAction
+     * @param 
+     * return void
+     */
+
+    function deleteAction() {
+
+        //titulo da pagina
+        $dataView = $this->getDataUtil();
+        $this->load->model('UserModel');
+        // recupera os dados
+        $dataPost = $this->input->post(null, true);
+        // abre uma transação com o DB
+        $this->db->trans_begin();
+        $status = $this->UserModel->deleteRegistry($dataPost);
+        // verifica se h� restri�oes para apagar o registro
+        //$status = $this->UserModel->checkConstraintRegistry($dataPost);
+        // verifica o status 
+        if ($status) {
+            // abre uma transação com o DB
+            $this->db->trans_commit();
+            //$status = $this->UserModel->deleteRegistry($dataPost);
+            // configura o json de resposta
+            $response = json_encode(
+                    array(
+                        'success' => true,
+                        'title' => ($dataView['titleDelete']),
+                        'message' => (MSG_DELETE_SUCESS),
+                        'icon' => 'info'
+                    )
+            );
+            echo $response;
+
+            //
+        } else {
+             // desfaz as modificaçoes do banco
+             $this->db->trans_rollback();
+            // configura o json de resposta
+            $response = json_encode(
+                    array(
+                        'success' => false,
+                        'title' => $dataView['titleDelete'],
+                        'message' => MSG_WARNNING_DELETE,
+                        'icon' => 'error'
+                    )
+            );
+            echo $response;
+        }
+    }
+
+    /*
+     * Metodo para pesquisar usuarios
+     * 
+     * @name searchAction
+     * @param 
+     * return void
+     */
+
+    function searchAction() {
+
+        //titulo da pagina
+        $dataView = $this->getDataUtil();
+        $this->load->model('UserModel');
+        $this->load->model('AccountUserModel');
+        $field1 = $this->UserModel->getTableFields();
+        $field2 = $this->AccountUserModel->getTableFields();
+        $fields['User'] = $field1;
+        $fields['AccountUser'] = $field2;
+        $this->load->view('user/search', $dataView + $fields);
+    }
+
+    /*
+     * Metodo para carregar os dados da pesquisa
+     * 
+     * @name loadDataSearchAction
+     * @param 
+     * return json
+     */
+
+    function loadDataSearchAction() {
+        
+        $this->removeMaskFields();
+        //carrega o modelo da tabela
+        $this->load->model('UserModel');
+        // recupera os filtros postados pelo usuario
+        $dataSearch = $this->input->post(null, true);
+        $dataSearch['date_birth'] = formatterDateSql($dataSearch['date_birth']);
+        
+        // total de registros da tabela
+        $total = $this->UserModel->countAll();
+        // recupera os registros de acordo com o filtro
+        $data = $this->UserModel->filtrateSearch($dataSearch);
+        // json response
+        $response = json_encode(
+                array(
+                    'total' => $total,
+                    'rows' => $data
+                )
+        );
+        echo $response;
+    }
+
+}
+
+?>
