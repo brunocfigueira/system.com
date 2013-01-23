@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="pt" lang="pt-br">
+    <head>
+        <title><?= $titlePage ?></title>
+        <meta http-equiv="Content-Type" content="text/html; charset= UTF-8" /> 
+        <!--        <link rel="icon" href="/web/adm/icone_cipela.ico" type="image/x-icon" />-->
+        <!--        <link rel="shortcut icon" href="/web/adm/icone_cipela.ico" />-->
+        <meta named="keywords" content="" />
+        <meta named="description" content="" />
+        <meta named="keyphrases" content="" />
+        <meta named="google-site-verification" content="" />
+        <meta named="google-site-verification" content="" />
+        <meta named="SKYPE_TOOLBAR" content="SKYPE_TOOLBAR_PARSER_COMPATIBLE" />
+        <link href="<?= base_url() ?>../scripts/css/loader.css" rel="stylesheet" type="text/css" media="screen"/>
+        <script src="<?= base_url() ?>../scripts/js/jquery-1.7.1.min.js" type="text/javascript" ></script>
+        <script src="<?= base_url() ?>../scripts/js/plugins-external.js" type="text/javascript" ></script>
+        <script src="<?= base_url() ?>../scripts/js/jquery.easyui.min.js" type="text/javascript" ></script>
+        <script src="<?= base_url() ?>../scripts/js/easyloader.js" type="text/javascript" ></script>
+
+    </head>
+    <script type="text/javascript">
+        $(document).ready(function(){
+            // carrega a linguagem portugues brasil
+            easyloader.locale = 'br';
+            //impede de submeter o formulario ou pagina atraves da tecla enter
+            $('input').keypress(function (e) {
+                var code = null;
+                code = (e.keyCode ? e.keyCode : e.which);                
+                return (code == 13) ? false : true;
+            });
+        })
+    </script>
+    <body class="easyui-layout">
+
+
+
+
